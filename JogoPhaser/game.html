@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Jogo Phaser</title>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+    <style type="type/css">
+    
+    body
+    {
+        margin: 0;
+    }
+    
+    </style>
+    
+</head>
+<body>
+    
+    <script type="text/javascript">
+    
+        var config = {
+            type: Phaser.AUTO,
+            width: 1600,
+            height: 700,
+            physics:
+            {
+                default: 'arcade',
+                arcade:{
+                    gravity:{y:300},
+                    debug:false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        var player;
+
+        var platforms;
+
+        var cursors;
+
+        var stars;
+
+        //pontuação
+        var score = 0;
+
+        //texto da pontuação
+        var scoreText;
+
+        //bomba
+        var bombs;
+
+        //condição de derrota
+        var gameover = false;
+
+        var game = new Phaser.Game(config);
+
+        var run;
+
+        var camera;
+
+        function preload()
+        {
+            //nome da imagem, caminho da imagem
+            this.load.image('sky','assets/sky.png');
+            this.load.image('ground','assets/platform.png');
+            this.load.image('star','assets/star.png');
+            this.load.image('bomb','assets/bomb.png');
+            this.load.spritesheet('dude','assets/dude.png', {frameWidth:32, frameHeight:48});
+        }
+
+        //start --> tudo que sera carregado para apresenta na tela
+        function create()
+        {
+            //posição em x e y, nome da imagem que sera carregado
+            this.add.image(800,600, 'sky').setScale(4);
+
+            //define como vetor e configura a física como estática
+            platforms = this.physics.add.staticGroup();
+
+            //criação das plataformas, escalonando por 2, atualiza para a física do objeto
+            platforms.create(800, 568, 'ground').setScale(4).refreshBody();
+
+            platforms.create(600, 400, 'ground');
+            platforms.create(1200, 400, 'ground');
+            platforms.create(820, 280, 'ground');
+            platforms.create(320, 280, 'ground');
+            platforms.create(1420, 280, 'ground');
+
+            platforms.create(50, 150, 'ground');
+
+            platforms.create(1030, 150, 'ground');
+
+            player = this.physics.add.sprite(100,450, 'dude');
+
+            //efeito de pingar
+            player.setBounce(0.2);
+
+            //o jogador ira colidir com as bordas da tela
+            player.setCollideWorldBounds(true);
+
+            //criações das animações
+            this.anims.create({
+                //nome da animação
+                key: 'left',
+                frames: this.anims.generateFrameNumbers('dude', {start:0, end:3}),
+
+                //velocidade da animação
+                frameRate: 10,
+
+                //-1 é repetição de animação "loop"
+                repeat:-1
+            });
+
+            this.anims.create({
+                key: 'turn',
+                frames:[{key:'dude', frame:4}],
+                frameRate:20
+            });
+
+            this.anims.create({
+                key: 'right',
+                frames: this.anims.generateFrameNumbers('dude', {start:5, end:8}),
+                frameRate: 10,
+                repeat:-1
+            });
+
+            //define a varíavel para receber comandos do teclado
+            cursors = this.input.keyboard.createCursorKeys();
+            run = this.input.keyboard.addKeys('SHIFT');
+
+            //criar grupo de coletável
+            stars = this.physics.add.group({
+                //ID,tag
+                key:'star',
+
+                //quantidade de objetos
+                repeat:22,
+
+                //locais onde ficara os objetos
+                setXY: {x:12, y:0, stepX:70}
+            });
+
+            //fisica do coletavel
+            stars.children.iterate(function(child){
+                child.setBounceY(Phaser.Math.FloatBetween(0.4,0.8));
+            });
+
+            //criação das bombas
+            bombs = this.physics.add.group();
+
+            //configuração do texto
+            scoreText = this.add.text(16,16, 'Score:0', {fontSize: '32px', fill: '#000',fontStyle:'bold'});
+            scoreText.setScrollFactor(0);
+
+            //colisões
+            this.physics.add.collider(stars,platforms);
+            this.physics.add.collider(player,platforms);
+            this.physics.add.collider(bombs,platforms);
+
+            //colisão com overlap//sobreposição
+            this.physics.add.overlap(player, stars, collectStar, null, this);
+
+            //colisão das bombas
+            this.physics.add.collider(player, bombs, hitBomb, null, this);
+
+            //configurações da camera
+            camera = this.cameras.main;
+            camera.startFollow(player);
+            camera.setFollowOffset(0, 0);
+        }
+
+        //função atualizada a cada quadro (repetidor)
+        function update()
+        {
+            //condição de derrota
+            if(gameover)
+            {
+                return;
+            }
+
+            if(cursors.left.isDown)
+            {
+                
+                if(run.SHIFT.isDown)
+                {
+                    player.setVelocityX(-300);
+                }
+                else
+                {
+                    player.setVelocityX(-160);
+                }
+                player.anims.play('left', true);
+            }
+
+            else if(cursors.right.isDown)
+            {
+                
+                if(run.SHIFT.isDown)
+                {
+                    player.setVelocityX(300);
+                }
+                else
+                {
+                    player.setVelocityX(160);
+                }
+
+                player.anims.play('right', true);
+
+
+            }
+            else
+            {
+                player.setVelocityX(0);
+                player.anims.play('turn');
+            }
+            if(cursors.up.isDown && player.body.touching.down)
+            {
+                player.setVelocityY(-330);
+            }
+            if(cursors.down.isDown)
+            {
+                player.setVelocityY(330);
+            }
+
+        }
+
+        function collectStar(player, star)
+        {
+            star.disableBody(true, true);
+            score += 10;
+            scoreText.setText('Score: '+ score);
+
+            
+             if(stars.countActive(true) === 0)
+             {
+                 stars.children.iterate(function (child)
+                 {
+                     child.enableBody(true, child.x,0, true, true)
+                 });
+                 var x = (player.x < 400) ? Phaser.Math.Between(400,800) : Phaser.Math.Between(0,400);
+
+                 var bomb = bombs.create(x,16, 'bomb');
+                 bomb.setBounce(1);
+                 bomb.setCollideWorldBounds(true)
+                 bomb.setVelocity(Phaser.Math.Between(-200, 200), 20)
+                 bomb.allowGravity = false;
+                 
+             }
+
+             
+        
+
+        }
+
+       
+
+        function hitBomb(player, bomb)
+        {
+            this.physics.pause();
+            player.setTint(0xff0000)
+            player.anims.play('turn');
+            gameover = true;
+        }
+
+        
+    
+    
+    </script>
+
+</body>
+</html>

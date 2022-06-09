@@ -1,0 +1,22 @@
+div#memory_board{
+    background-color: #CCA;
+    border: #000000 500px double;
+    width: 800px;
+    height: 540px;
+    padding: 24px;
+    margin: 0px;
+}
+
+div#memory_board> div{
+    background-image: url("image/game.png");
+    background-size: cover;
+    border: #000000 1px solid;
+    width: 71px;
+    height: 71px;
+    float: left;
+    margin: 10px;
+    padding: 20px;
+    font-size: 64px;
+    cursor: pointer;
+    text-align: center;
+}
